@@ -1,0 +1,1 @@
+DATE_STR_FORMAT_1 = "%B %d, %Y"
