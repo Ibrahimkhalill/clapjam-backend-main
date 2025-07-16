@@ -44,8 +44,8 @@ class Bio(models.Model):
 
 class Pic(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='pics')
-    profile_pic_url = models.TextField(default='')
-    cover_pic_url = models.TextField(default='')
+    profile_pic_url = models.ImageField(upload_to="profile", blank=True, null=True)
+   
     
     def __str__(self) -> str:
         return self.user.email 

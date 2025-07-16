@@ -5,19 +5,22 @@ from posts import models
 class Poster:
     
     def __init__(
-        self, user: models.User, 
+        self, user: models.User,
         caption: str | None=None,
-        privacy: str='Privacy', 
-        poll: dict | None=None, 
+        privacy: str='Public',
+        poll: dict | None=None,
         event: dict | None=None,
-        images: list| None=None,
-        videos: list | None=None):
-        
+        images: list | None=None,  # Now expects file objects
+        videos: list | None=None   # Now expects file objects
+    ):
         self.user = user
         self.caption = caption
         self.poll = poll
         self.event = event
         self.privacy = privacy
+        self.images = images
+        self.videos = videos
+
         
     def create_metadata(self) -> models.PostMetaData:
         return models.PostMetaData.objects.create(user=self.user, privacy=self.privacy)
@@ -26,6 +29,16 @@ class Poster:
         self, metadata: models.PostMetaData) -> models.PostText:
         if self.caption is not None:
             return models.PostText.objects.create(metadata=metadata, content=self.caption)
+        
+    def create_images(self, metadata: models.PostMetaData) -> None:
+        if self.images is not None:
+            for image_file in self.images:
+                models.PostImageUrl.objects.create(image=metadata, file=image_file)
+
+    def create_videos(self, metadata: models.PostMetaData) -> None:
+        if self.videos is not None:
+            for video_file in self.videos:
+                models.PostVideoUrl.objects.create(image=metadata, file=video_file)
     
     def create_poll(self, metadata: models.PostMetaData) -> models.PostPoll:
         if self.poll is not None:
@@ -46,6 +59,8 @@ class Poster:
         self.create_text(metadata)
         self.create_poll(metadata)
         self.create_event(metadata)
+        self.create_images(metadata)  # Handle image file uploads
+        self.create_videos(metadata)  # Handle video file uploads
         return metadata
 
 
@@ -68,4 +83,4 @@ class PostViewer:
         
     
     def get_viewable_posts_queryset(self) -> QuerySet:
-        return models.PostMetaData.objects.filter(id__in=self.get_post_ids())
+        return models.PostMetaData.objects.filter(id__in=self.get_post_ids()).order_by('-created_at')

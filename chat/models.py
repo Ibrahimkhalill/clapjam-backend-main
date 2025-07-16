@@ -73,3 +73,43 @@ class ChatMessageVideoUrl(models.Model):
 
     def __str__(self):
         return f"Video URL for message {self.message.id}"
+    
+
+# user chat model
+
+from django.db import models
+from django.contrib.auth.models import User
+import uuid
+
+class Chat(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user1 = models.ForeignKey(User, related_name='chats_as_user1', on_delete=models.CASCADE)
+    user2 = models.ForeignKey(User, related_name='chats_as_user2', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user1', 'user2')
+
+    def __str__(self):
+        return f"Chat between {self.user1} and {self.user2}"
+
+class ChatHistory(models.Model):
+    chat = models.ForeignKey(Chat, related_name='messages', on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
+    text = models.TextField(blank=True, null=True)  # Text content
+    image_url = models.URLField(blank=True, null=True)  # Image URL
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Message from {self.sender} in chat {self.chat}"
+
+class ChatImage(models.Model):
+    file = models.ImageField(upload_to='chat_images/')
+    uploader = models.ForeignKey(User, related_name='uploaded_chat_images', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Image {self.file.name} by {self.uploader}"

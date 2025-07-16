@@ -27,6 +27,8 @@ class CocktailSerializer(serializers.ModelSerializer):
         ingredients_data = validated_data.pop('ingredients', [])
         image = validated_data.get('image', None)
 
+       
+
         # Prepare metadata for generate_recipe
         metadata = {
             'title': validated_data.get('title', 'Unknown'),
@@ -48,6 +50,7 @@ class CocktailSerializer(serializers.ModelSerializer):
         request.method = 'POST'
         request.FILES['image'] = image if image else None
         request.data = {'metadata': json.dumps(metadata)}
+        print("mea", metadata)
 
         # Call generate_recipe
         response = generate_recipe(request)

@@ -32,8 +32,8 @@ class ProfileHandler:
     def pics(self) -> dict:
         return dict(
             user_id=self.user.id,
-            profile_pic_url=self.user.pics.profile_pic_url,
-            cover_pic_url=self.user.pics.cover_pic_url,
+            profile_pic_url=self.user.pics.profile_pic_url.url if hasattr(self.user, 'pics') and self.user.pics.profile_pic_url else None
+            
         )
     
     @property
@@ -89,12 +89,24 @@ class ProfileHandler:
         self.user.nickname.name = nickname
         self.user.nickname.save()
     
-    def update_birthdate(self, date: int):
-        birthdate = datetime.datetime.fromtimestamp(
-            int(date)/1000).date() if date is not None else None
-        self.user.birth_date.date = birthdate
-        self.user.birth_date.save()
-        return self.birthdate
+        
+    def update_birthdate(self, date: str | int) -> dict | None:
+        try:
+            if isinstance(date, str):
+                # Parse YYYY-MM-DD format
+                birthdate = datetime.datetime.strptime(date, '%Y-%m-%d').date()
+            elif isinstance(date, int):
+                # Parse millisecond timestamp
+                birthdate = datetime.datetime.fromtimestamp(date / 1000).date()
+            else:
+                self.error_messages.append("Birthdate must be a timestamp (integer) or YYYY-MM-DD string")
+                return None
+            self.user.birth_date.date = birthdate
+            self.user.birth_date.save()
+            return self.birthdate
+        except ValueError:
+            self.error_messages.append("Invalid birthdate format. Use YYYY-MM-DD or millisecond timestamp")
+            return None
     
     def update_primary(self, name: str, nickname: str, birthdate: int) -> dict | None:
         is_valid, errors = self.validate_primary(name, nickname)

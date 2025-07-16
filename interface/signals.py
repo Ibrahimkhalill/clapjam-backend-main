@@ -44,12 +44,7 @@ def add_bio(instance: User, created: bool, *args, **kwargs) -> None:
 def add_pics(instance: User, created: bool, *args, **kwargs) -> None:
     user = instance
     if created:
-        pic_id = str(random.randint(1,50))
-        pp_url = f'https://i.pravatar.cc/150?img={pic_id}'
-        cp_url = f'https://picsum.photos/id/{pic_id}/800/300'
         profile_models.Pic.objects.create(
             user=user,
-            profile_pic_url=pp_url,
-            cover_pic_url=cp_url,
         )
 

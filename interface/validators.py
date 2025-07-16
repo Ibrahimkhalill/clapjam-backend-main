@@ -9,15 +9,47 @@ class UserValidator:
     def __init__(self) -> None:
         self.error_messages = list()
     
-    def validate_name(self, name: str) -> bool: 
-        is_valid = re.match(const.NAME_REGEX, name)
-        if not is_valid: self.error_messages.append(msg.INVALID_NAME)
-        return is_valid
-    
-    def validate_nickname(self, nickname=str) -> bool: 
-        is_valid = re.match(const.NICKNAME_REGEX, nickname)
-        if not is_valid: self.error_messages.append(msg.INVALID_NICKNAME)
-        return is_valid
+    def validate_name(self, name: str) -> bool:
+        if not name or not isinstance(name, str):
+            self.error_messages.append("Name is required and must be a string")
+            return False
+        # Allow single or multiple parts, alphabetic characters and spaces only
+        if not re.match(r'^[A-Za-z\s]+$', name.strip()):
+            self.error_messages.append("Name can only contain alphabetic characters and spaces")
+            return False
+        return True
+
+    def validate_nickname(self, nickname: str) -> bool:
+        if not nickname or not isinstance(nickname, str):
+            self.error_messages.append("Nickname is required and must be a string")
+            return False
+        if len(nickname) > 20:
+            self.error_messages.append("Nickname must be 20 characters or less")
+            return False
+        if not re.match(r'^[A-Za-z0-9_]+$', nickname):
+            self.error_messages.append("Nickname can only contain alphanumeric characters and underscores")
+            return False
+        return True
+
+
+    def validate_country_and_city(self, country_name: str, city_name: str) -> bool:
+        if not country_name or not isinstance(country_name, str):
+            self.error_messages.append("Country name is required and must be a string")
+            return False
+        if not city_name or not isinstance(city_name, str):
+            self.error_messages.append("City name is required and must be a string")
+            return False
+        
+        # Create or get Country
+        country, created = Country.objects.get_or_create(name=country_name.strip())
+        
+        # Create or get City
+        city, created = City.objects.get_or_create(
+            name=city_name.strip(),
+            country=country
+        )
+        
+        return True, city  # Return True and the City instance
         
     def validate_email(self, email: str) -> bool:
         is_unique = not User.objects.filter(email=email).exists()
@@ -45,19 +77,9 @@ class UserValidator:
         a,b = self.validate_password_len(password), self.validate_same_password(password, confirm_password) 
         return a and b      
     
-    def validate_country(self, country_name: str) -> bool:
-        is_valid = Country.objects.filter(name=country_name).exists()
-        if not is_valid: self.error_messages.append(msg.NO_COUNTRY)
-        return is_valid
     
-    def validate_city(self, country_name: str, city_name: str) -> bool:
-        is_valid = City.objects.filter(country__name=country_name, name=city_name).exists()
-        if not is_valid: self.error_messages.append(msg.NO_CITY)
-        return is_valid
         
-    def validate_country_and_city(self, country_name: str, city_name: str) -> bool:
-        a,b = self.validate_country(country_name), self.validate_city(country_name, city_name)
-        return a and b 
+    
     
     @property
     def errors(self) -> list:
