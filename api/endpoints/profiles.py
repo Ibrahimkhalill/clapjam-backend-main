@@ -1,7 +1,8 @@
 from .libs import *
 from interface import profiles, validators
 from .. import messages as msg
-
+from profiles.models import Nickname, Bio, Pic, BirthDate, Address, Follow
+from rest_framework.views import APIView
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,47 @@ logger = logging.getLogger(__name__)
 #             return Response(response, status=status.HTTP_200_OK)
 #         return Response(dict(errors=self.profile.errors))
 
+class UserProfileAPI(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request, user_id) -> Response:
+        try:
+            user = User.objects.get(id=user_id)
+            profile_data = {
+                "user_id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "full_name": user.get_full_name() or user.username,
+                "nickname": user.nickname.name if hasattr(user, 'nickname') else None,
+                "bio": user.bio.content if hasattr(user, 'bio') else None,
+                "profile_pic_url": user.pics.profile_pic_url.url if hasattr(user, 'pics') and user.pics.profile_pic_url else None,
+                "birth_date": user.birth_date.date_str if hasattr(user, 'birth_date') and user.birth_date.date else None,
+                "address": None,
+                "is_following": Follow.objects.filter(follower=request.user, followed=user).exists() if user != request.user else False,
+                "viewer_is_user": user == request.user
+            }
+            if hasattr(user, 'address') and user.address:
+                profile_data["address"] = {
+                    "city": user.address.city.display_name if user.address.city else None,
+                    "post_code": user.address.post_code,
+                    "country": user.address.city.country.name if user.address.city else None,
+                    "details": user.address.details
+                }
+            return Response(
+                profile_data,
+                status=status.HTTP_200_OK
+            )
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error fetching user profile: {str(e)}")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 

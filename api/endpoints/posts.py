@@ -3,7 +3,7 @@ from posts import models
 from interface.posts import Poster, PostViewer
 from .. import messages as msg
 from rest_framework.pagination import PageNumberPagination
-
+from posts.models import PostMetaData
 
 class PostPaginator(PageNumberPagination):
     page_size = 20  
@@ -46,16 +46,6 @@ from django.core.validators import FileExtensionValidator
 import logging
 import json
 
-logger = logging.getLogger(__name__)
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, permissions
-from django.core.validators import FileExtensionValidator
-import logging
-import json
-
-logger = logging.getLogger(__name__)
 
 class UserPostAPI(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -740,3 +730,38 @@ class PostCommentsAPI(views.APIView):
         if metadata is not None:
             return Response(metadata.all_comments, status=status.HTTP_200_OK)  
         return Response(dict(errors=[msg.INVALID_ID]), status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+class UserPostsAPI(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, user_id) -> Response:
+        try:
+            user = User.objects.get(id=user_id)
+            posts = PostMetaData.objects.filter(user=user)
+            visible_posts = [
+                post.details(viewer=request.user)
+                for post in posts
+                if post.is_valid_viewer(request.user.id)
+            ]
+            return Response(
+                {
+                    "user_id": user_id,
+                    "total_posts": len(visible_posts),
+                    "posts": visible_posts
+                },
+                status=status.HTTP_200_OK
+            )
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error fetching user posts: {str(e)}")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

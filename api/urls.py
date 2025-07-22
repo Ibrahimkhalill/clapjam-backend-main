@@ -34,4 +34,10 @@ urlpatterns = [
     path('posts/feed', views.PostFeedAPI.as_view()),
     path('posts/likes/<metadata_id>', views.PostLikesAPI.as_view()),
     path('posts/comments/<metadata_id>', views.PostCommentsAPI.as_view()),
+    
+    
+    
+    
+    path('user/profiles/<int:user_id>', views.UserProfileAPI.as_view(), name='user-profile'),
+    path('user/<int:user_id>/posts', views.UserPostsAPI.as_view(), name='user-posts'),
 ]

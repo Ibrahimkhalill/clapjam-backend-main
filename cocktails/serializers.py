@@ -26,6 +26,7 @@ class CocktailSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         ingredients_data = validated_data.pop('ingredients', [])
         image = validated_data.get('image', None)
+        print("validated_data", validated_data)
         
         if not image:
              raise serializers.ValidationError({"image": "Image is required. Please upload an image."})
