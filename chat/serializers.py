@@ -14,14 +14,22 @@ class ChatMessageVideoUrlSerializer(serializers.ModelSerializer):
         fields = ['url']
 
 class ChatMessageSerializer(serializers.ModelSerializer):
-    image_urls = ChatMessageImageUrlSerializer(many=True, read_only=True, source='imageurls')
-    video_urls = ChatMessageVideoUrlSerializer(many=True, read_only=True, source='videourls')
+    image_urls = serializers.SerializerMethodField()
+    video_urls = serializers.SerializerMethodField()
     sent_at = serializers.DateTimeField(format='iso-8601')
 
     class Meta:
         model = ChatMessage
         fields = ['id', 'is_bot', 'text', 'image_urls', 'video_urls', 'sent_at']
-       
+
+    def get_image_urls(self, obj):
+        if obj.is_bot:
+            return []  # Exclude images for bot messages
+        return [image.url.url for image in obj.imageurls.all()]
+
+    def get_video_urls(self, obj):
+        return [video.url.url for video in obj.videourls.all()]
+
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     room_id = serializers.IntegerField(source='id', read_only=True)

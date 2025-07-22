@@ -26,6 +26,9 @@ class CocktailSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         ingredients_data = validated_data.pop('ingredients', [])
         image = validated_data.get('image', None)
+        
+        if not image:
+             raise serializers.ValidationError({"image": "Image is required. Please upload an image."})
 
        
 
@@ -88,37 +91,57 @@ class CocktailSerializer(serializers.ModelSerializer):
             for ingredient_data in ingredients_data:
                 Ingredient.objects.create(cocktail=instance, **ingredient_data)
         return instance
-
+    
     def _extract_recipe_steps(self, recipe_text):
         """
-        Extract recipe steps from the generated recipe text and format as JSON.
-        Includes 'How to Make It' as the first step and numbered steps.
+        Extract recipe steps from text, separating intro and ingredients from actual steps.
+        Returns a dictionary with 'intro', 'ingredients', and 'steps'.
         """
         steps = []
+        intro = []
+        ingredients = []
+
         lines = recipe_text.split('\n')
         current_step = None
         step_content = []
 
         for line in lines:
             line = line.strip()
+            print("line", line)
             if line == "How to Make It" or line.startswith('### Step -'):
+                # Save the previous step block
                 if current_step and step_content:
-                    steps.append({
-                        'step': current_step,
-                        'instructions': step_content
-                    })
+                    if current_step == "How to Make It":
+                        intro = step_content
+                    elif current_step == "Step - 01":
+                        ingredients = step_content
+                    else:
+                        steps.append({
+                           
+                            'instructions': step_content
+                        })
+                # Start new block
                 current_step = line.replace('### ', '').strip()
                 step_content = []
-            elif line and current_step:
+            elif line and current_step and line != "---":
                 step_content.append(line)
-
+        # Handle the final block
         if current_step and step_content:
-            steps.append({
-                'step': current_step,
-                'instructions': step_content
-            })
+            if current_step == "How to Make It":
+                intro = step_content
+            elif current_step == "Step - 01":
+                ingredients = step_content
+            else:
+                steps.append({
+                    
+                    'instructions': step_content
+                })
 
-        return steps
+        return {
+            "intro": intro,
+            "steps": steps
+        }
+
 
 class BookMarkSerializer(serializers.ModelSerializer):
     cocktail = CocktailSerializer(read_only=True)

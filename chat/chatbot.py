@@ -194,6 +194,7 @@ def alcoholbot(request):
 
         user_message_id = None
         image_path = None
+        image_urls = []
 
         if message_text or image_file or image_base64:
             user_message = ChatMessage.objects.create(
@@ -219,9 +220,9 @@ def alcoholbot(request):
 
                 image_response = generate_image_analysis(image_bytes)
                 response_data["image_response"] = image_response
-                # Save relative path for ImageField
                 image_path = os.path.join("uploads", filename).replace(os.sep, "/")
                 ChatMessageImageUrl.objects.create(message=user_message, url=image_path)
+                image_urls.append(image_path)
             except Exception as e:
                 user_message.delete()
                 return JsonResponse(
@@ -243,9 +244,9 @@ def alcoholbot(request):
                 path = os.path.join(upload_folder, filename)
                 with open(path, "wb") as f:
                     f.write(image_bytes)
-                # Save relative path for ImageField
                 image_path = os.path.join("uploads", filename).replace(os.sep, "/")
                 ChatMessageImageUrl.objects.create(message=user_message, url=image_path)
+                image_urls.append(image_path)
             except Exception as e:
                 user_message.delete()
                 return JsonResponse(
@@ -265,23 +266,31 @@ def alcoholbot(request):
                 {"success": False, "error": "No valid input provided."}, status=400
             )
 
-        bot_message_id = None
+        
         if response_data.get("text_response") or response_data.get("image_response"):
-            bot_message = ChatMessage.objects.create(
+            ChatMessage.objects.create(
                 room=chat_room,
                 is_bot=True,
                 text=response_data.get("text_response", "") or response_data.get("image_response", "")
             )
-            bot_message_id = bot_message.id
-            if image_path:
-                ChatMessageImageUrl.objects.create(message=bot_message, url=image_path)
+         
+            
 
-        response_data["success"] = True
-        response_data["room_id"] = chat_room.id
-        response_data["user_message_id"] = user_message_id
-        response_data["bot_message_id"] = bot_message_id
+        # ✅ Final Response Formatting
+        final_response = {
+            "ai_response": {
+                "text": response_data.get("text_response", "") or response_data.get("image_response", ""),
+                "image_urls": [],
+                "is_bot": True,
+            },
+            "your_message": {
+                "text": message_text or "",
+                "image_urls": image_urls,
+                "is_bot": False
+            }
+        }
 
-        return JsonResponse(response_data)
+        return JsonResponse(final_response)
 
     except Exception as e:
         return JsonResponse({"success": False, "error": f"Server error: {str(e)}"}, status=500)
