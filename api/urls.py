@@ -40,4 +40,5 @@ urlpatterns = [
     
     path('user/profiles/<int:user_id>', views.UserProfileAPI.as_view(), name='user-profile'),
     path('user/<int:user_id>/posts', views.UserPostsAPI.as_view(), name='user-posts'),
+    path('user/<int:user_id>/events', views.UserEventsAPI.as_view(), name='user-events'),
 ]

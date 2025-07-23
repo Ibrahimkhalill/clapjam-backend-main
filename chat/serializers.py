@@ -23,12 +23,31 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         fields = ['id', 'is_bot', 'text', 'image_urls', 'video_urls', 'sent_at']
 
     def get_image_urls(self, obj):
-        if obj.is_bot:
-            return []  # Exclude images for bot messages
-        return [image.url.url for image in obj.imageurls.all()]
+        request = self.context.get('request', None)
+        urls = []
+        for image in obj.imageurls.all():
+            raw_url = image.url.url  # May look like "/media/media/..."
+            clean_url = self.clean_media_url(raw_url)
+            if request:
+                urls.append(request.build_absolute_uri(clean_url))
+            else:
+                urls.append(clean_url)
+        return urls
 
     def get_video_urls(self, obj):
-        return [video.url.url for video in obj.videourls.all()]
+        request = self.context.get('request', None)
+        urls = []
+        for video in obj.videourls.all():
+            raw_url = video.url.url
+            clean_url = self.clean_media_url(raw_url)
+            if request:
+                urls.append(request.build_absolute_uri(clean_url))
+            else:
+                urls.append(clean_url)
+        return urls
+
+    def clean_media_url(self, url):
+        return url.replace('/media/media/', '/media/')
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):

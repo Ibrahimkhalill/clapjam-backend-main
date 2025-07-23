@@ -16,32 +16,20 @@ load_dotenv()
 # OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Allowed alcohol-related keywords
 ALCOHOL_KEYWORDS = [
-    "alcohol",
-    "drink",
-    "wine",
-    "vodka",
-    "whiskey",
-    "rum",
-    "beer",
-    "gin",
-    "tequila",
-    "brandy",
-    "cocktail",
-    "liquor",
-    "spirits",
-    "bottle",
-    "bourbon",
+    "alcohol", "drink", "wine", "vodka", "whiskey", "rum", "beer",
+    "gin", "tequila", "brandy", "cocktail", "liquor", "spirits", "bottle", "bourbon",
 ]
 
-# Helper: Check if a message is alcohol-related based on keywords
+def get_short_filename(original_file):
+    ext = os.path.splitext(original_file.name)[1]  # get extension like '.jpg'
+    return f"{uuid.uuid4()}{ext}"
+
 def is_alcohol_related(message):
     if not message:
         return False
     return any(keyword in message.lower() for keyword in ALCOHOL_KEYWORDS)
 
-# Helper: Check if conversation context is alcohol-related
 def is_conversation_alcohol_related(chat_room):
     last_messages = ChatMessage.objects.filter(room=chat_room).order_by('-sent_at')[:5]
     for msg in last_messages:
@@ -49,7 +37,6 @@ def is_conversation_alcohol_related(chat_room):
             return True
     return False
 
-# Helper: Generate image-based alcohol information
 def generate_image_analysis(image_bytes):
     prompt = (
         "You're an expert alcohol identification assistant. Given this image of an alcohol bottle, "
@@ -93,7 +80,6 @@ def generate_image_analysis(image_bytes):
     except Exception as e:
         return f"Error processing image: {str(e)}"
 
-# Helper: Generate response based on text and conversation history
 def generate_text_response(message, chat_room):
     if not (is_alcohol_related(message) or is_conversation_alcohol_related(chat_room)):
         return "❌ This assistant only supports alcohol-related questions."
@@ -134,13 +120,7 @@ def generate_text_response(message, chat_room):
     except Exception as e:
         return f"Error processing text: {str(e)}"
 
-# Main Django function to handle alcohol bot requests
 def alcoholbot(request):
-    """
-    Django function to handle alcohol bot requests for authenticated users only.
-    Saves user messages and bot replies to a single AI chat room per user, associating the user
-    with the room on first chat. Images are saved permanently to media/uploads/.
-    """
     if not request.user.is_authenticated:
         return JsonResponse(
             {"success": False, "error": "Authentication required to use the alcohol bot."},
@@ -165,9 +145,7 @@ def alcoholbot(request):
                 image_base64 = json_data.get('image_base64')
                 room_id = json_data.get('room_id')
             except json.JSONDecodeError:
-                return JsonResponse(
-                    {"success": False, "error": "Invalid JSON format."}, status=400
-                )
+                return JsonResponse({"success": False, "error": "Invalid JSON format."}, status=400)
         else:
             message_text = request.POST.get('message') or request.POST.get('text')
             image_file = request.FILES.get('image')
@@ -205,9 +183,9 @@ def alcoholbot(request):
             user_message_id = user_message.id
 
         if image_file and image_file.name:
-            filename = f"{uuid.uuid4()}_{image_file.name}"
+            filename = get_short_filename(image_file)
             path = os.path.join(upload_folder, filename)
-            
+
             with open(path, "wb") as f:
                 for chunk in image_file.chunks():
                     f.write(chunk)
@@ -220,18 +198,13 @@ def alcoholbot(request):
 
                 image_response = generate_image_analysis(image_bytes)
                 response_data["image_response"] = image_response
-                image_path = os.path.join("uploads", filename).replace(os.sep, "/")
+
+                image_path = f"/media/uploads/{filename}"
                 ChatMessageImageUrl.objects.create(message=user_message, url=image_path)
                 image_urls.append(image_path)
             except Exception as e:
                 user_message.delete()
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "error": f"Image processing failed: {str(e)}",
-                    },
-                    status=400,
-                )
+                return JsonResponse({"success": False, "error": f"Image processing failed: {str(e)}"}, status=400)
 
         elif image_base64:
             if "," in image_base64:
@@ -240,43 +213,33 @@ def alcoholbot(request):
                 image_bytes = base64.b64decode(image_base64)
                 image_response = generate_image_analysis(image_bytes)
                 response_data["image_response"] = image_response
-                filename = f"{uuid.uuid4()}_base64.jpg"
+
+                filename = f"{uuid.uuid4()}.jpg"
                 path = os.path.join(upload_folder, filename)
                 with open(path, "wb") as f:
                     f.write(image_bytes)
-                image_path = os.path.join("uploads", filename).replace(os.sep, "/")
+
+                image_path = f"/media/uploads/{filename}"
                 ChatMessageImageUrl.objects.create(message=user_message, url=image_path)
                 image_urls.append(image_path)
             except Exception as e:
                 user_message.delete()
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "error": f"Base64 image processing failed: {str(e)}",
-                    },
-                    status=400,
-                )
+                return JsonResponse({"success": False, "error": f"Base64 image processing failed: {str(e)}"}, status=400)
 
         if message_text:
             text_response = generate_text_response(message_text, chat_room)
             response_data["text_response"] = text_response
 
         if not response_data and not user_message_id:
-            return JsonResponse(
-                {"success": False, "error": "No valid input provided."}, status=400
-            )
+            return JsonResponse({"success": False, "error": "No valid input provided."}, status=400)
 
-        
         if response_data.get("text_response") or response_data.get("image_response"):
             ChatMessage.objects.create(
                 room=chat_room,
                 is_bot=True,
                 text=response_data.get("text_response", "") or response_data.get("image_response", "")
             )
-         
-            
 
-        # ✅ Final Response Formatting
         final_response = {
             "ai_response": {
                 "text": response_data.get("text_response", "") or response_data.get("image_response", ""),

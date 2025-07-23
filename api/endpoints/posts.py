@@ -733,6 +733,53 @@ class PostCommentsAPI(views.APIView):
 
 
 
+class UserEventsAPI(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, user_id) -> Response:
+        try:
+            user = User.objects.get(id=user_id)
+            events = PostMetaData.objects.filter(user=user, event__isnull=False).order_by('-created_at')
+            visible_events = [
+                {
+                    **post.details(viewer=request.user),
+                    "event": {
+                        "uid": post.event.uid,
+                        "title": post.event.title,
+                        "date": post.event.date,
+                        "time": post.event.time,
+                        "country": post.event.country,
+                        "city": post.event.city,
+                        "place_id": post.event.place_id,
+                        "longitude": post.event.longitude,
+                        "latitude": post.event.latitude,
+                        "post_code": post.event.post_code,
+                        "description": post.event.description
+                    }
+                }
+                for post in events
+                if post.is_valid_viewer(request.user.id)
+            ]
+            return Response(
+                {
+                    "user_id": user_id,
+                    "total_events": len(visible_events),
+                    "events": visible_events
+                },
+                status=status.HTTP_200_OK
+            )
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error fetching user events: {str(e)}")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class UserPostsAPI(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -740,7 +787,7 @@ class UserPostsAPI(APIView):
     def get(self, request, user_id) -> Response:
         try:
             user = User.objects.get(id=user_id)
-            posts = PostMetaData.objects.filter(user=user)
+            posts = PostMetaData.objects.filter(user=user).order_by('-created_at')
             visible_posts = [
                 post.details(viewer=request.user)
                 for post in posts

@@ -148,7 +148,7 @@ def bookmark_delete(request, pk):
     except BookMark.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
     bookmark.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    return Response({"messages": "Bookmark deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
 

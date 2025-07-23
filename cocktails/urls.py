@@ -10,12 +10,12 @@ urlpatterns = [
     
     
     # BookMark URLs
-    path('bookmarks/', bookmark_list, name='bookmark_list'),
-    path('bookmarks/<int:pk>/', bookmark_detail, name='bookmark_detail'),
-    path('bookmarks/create/', bookmark_create, name='bookmark_create'),
-    path('bookmarks/<int:pk>/update/', bookmark_update, name='bookmark_update'),
-    path('bookmarks/<int:pk>/delete/', bookmark_delete, name='bookmark_delete'),
+    path('bookmarks', bookmark_list, name='bookmark_list'),
+    path('bookmarks/<int:pk>', bookmark_detail, name='bookmark_detail'),
+    path('bookmarks/create', bookmark_create, name='bookmark_create'),
+    path('bookmarks/<int:pk>/update', bookmark_update, name='bookmark_update'),
+    path('bookmarks/<int:pk>/delete', bookmark_delete, name='bookmark_delete'),
 
     #
-    path('cocktails/ai/genarate/receipe/', user_genarate_receipe_ai)
+    path('cocktails/ai/genarate/receipe', user_genarate_receipe_ai)
 ]
